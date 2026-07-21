@@ -42,6 +42,35 @@ create table if not exists public.examenes (
 
 create index if not exists examenes_curso_id_idx on public.examenes(curso_id);
 
+-- Cada subida de un informe de progreso queda guardada como instantánea,
+-- para poder ver la evolución del curso en el tiempo.
+create table if not exists public.subidas (
+    id                uuid primary key default gen_random_uuid(),
+    curso_id          uuid not null references public.cursos(id) on delete cascade,
+    fecha_referencia  date not null,
+    n_alumnos         int,
+    resumen           jsonb,          -- KPIs del momento (al día, recordar, retrasados...)
+    subido_en         timestamptz not null default now()
+);
+
+create index if not exists subidas_curso_id_idx on public.subidas(curso_id);
+
+-- Detalle por alumno y prueba de cada instantánea.
+create table if not exists public.seguimiento (
+    id             uuid primary key default gen_random_uuid(),
+    subida_id      uuid not null references public.subidas(id) on delete cascade,
+    alumno         text not null,
+    email          text,
+    actividad      text not null,
+    examen_id      uuid references public.examenes(id) on delete set null,
+    estado         text not null,     -- HECHO, SUSPENSO, RECORDAR, FUERA DE PLAZO...
+    completado_en  timestamptz
+);
+
+create index if not exists seguimiento_subida_id_idx on public.seguimiento(subida_id);
+
 -- Activar RLS y no crear políticas: bloquea el acceso público (anon).
-alter table public.cursos   enable row level security;
-alter table public.examenes enable row level security;
+alter table public.cursos      enable row level security;
+alter table public.examenes    enable row level security;
+alter table public.subidas     enable row level security;
+alter table public.seguimiento enable row level security;

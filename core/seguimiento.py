@@ -91,6 +91,9 @@ class ExamDef:
     is_final: bool
     is_equality: bool
     has_calendar: bool
+    # Marcado en la pantalla de validación: las pruebas no calificables
+    # (p.ej. proba inicial) no cuentan para la previsión de APTO.
+    counts_for_grade: bool = True
 
 
 @dataclass
@@ -454,8 +457,14 @@ def predict_results(
     schedule: list[ExamDef],
 ) -> dict[str, str]:
     """Previsión según reglas del documento de especificaciones."""
-    specialty = [e for e in schedule if e and not e.is_equality and e.has_calendar]
-    equality = [e for e in schedule if e and e.is_equality and e.has_calendar]
+    specialty = [
+        e for e in schedule
+        if e and not e.is_equality and e.has_calendar and e.counts_for_grade
+    ]
+    equality = [
+        e for e in schedule
+        if e and e.is_equality and e.has_calendar and e.counts_for_grade
+    ]
 
     def done_for(exam: ExamDef) -> bool:
         return statuses_by_key.get(exam.name, STATUS_NA) in {STATUS_HECHO, STATUS_HECHO_TARDE}

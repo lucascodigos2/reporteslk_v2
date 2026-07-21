@@ -104,6 +104,58 @@ def borrar_examenes_sin_calendario(curso_id: str) -> None:
     )
 
 
+# ---------------------------------------------------------------------------
+# Instantáneas de seguimiento
+# ---------------------------------------------------------------------------
+
+def crear_subida(
+    curso_id: str,
+    fecha_referencia: Any,
+    n_alumnos: int,
+    resumen: dict[str, Any],
+    detalle: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """Guarda una instantánea del seguimiento (cabecera + detalle por alumno)."""
+    client = get_client()
+    res = (
+        client.table("subidas")
+        .insert(
+            {
+                "curso_id": curso_id,
+                "fecha_referencia": str(fecha_referencia),
+                "n_alumnos": n_alumnos,
+                "resumen": resumen,
+            }
+        )
+        .execute()
+    )
+    subida = res.data[0]
+
+    if detalle:
+        filas = [{**d, "subida_id": subida["id"]} for d in detalle]
+        # insertar por lotes para no exceder el tamaño de petición
+        for i in range(0, len(filas), 500):
+            client.table("seguimiento").insert(filas[i : i + 500]).execute()
+
+    return subida
+
+
+def subidas_de_curso(curso_id: str) -> list[dict[str, Any]]:
+    res = (
+        get_client()
+        .table("subidas")
+        .select("*")
+        .eq("curso_id", curso_id)
+        .order("fecha_referencia", desc=True)
+        .execute()
+    )
+    return res.data or []
+
+
+def borrar_subida(subida_id: str) -> None:
+    get_client().table("subidas").delete().eq("id", subida_id).execute()
+
+
 def curso_validado(curso_id: str) -> bool:
     res = (
         get_client()
