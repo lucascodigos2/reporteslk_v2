@@ -1,44 +1,79 @@
-"""Plataforma de seguimiento de cursos — página principal."""
+"""Plataforma de seguimiento de cursos — enrutado y sesión."""
 
 from __future__ import annotations
 
 import streamlit as st
 
-from core import auth, db
+from core import auth
 
 st.set_page_config(
     page_title="Seguimiento de cursos",
     page_icon="▪",
     layout="wide",
+    initial_sidebar_state="auto",
 )
 
-auth.exigir_login()
+ESTILO = """
+<style>
+/* Ocultar cromo sobrante de Streamlit */
+#MainMenu, footer, [data-testid="stDecoration"] {visibility: hidden; height: 0;}
 
-st.title("Seguimiento de cursos")
-st.caption(
-    "Da de alta tus cursos con el informe de días lectivos y lleva el "
-    "seguimiento de varios a la vez."
-)
+.block-container {padding-top: 3rem; max-width: 1150px;}
 
-try:
-    cursos = db.listar_cursos()
-except Exception as e:  # noqa: BLE001
-    st.error(
-        "No se ha podido conectar con la base de datos. Revisa las credenciales "
-        "de Supabase en los *secrets* y que el esquema (`schema.sql`) esté creado."
+/* Cabecera de página */
+.titulo-pagina {
+  font-size: 1.6rem;
+  font-weight: 600;
+  margin: 0 0 .2rem 0;
+}
+.subtitulo-pagina {
+  color: #9a9a9a;
+  font-size: .92rem;
+  margin: 0 0 1.6rem 0;
+}
+
+/* Pantalla de acceso */
+.marca {
+  font-size: 1.7rem;
+  font-weight: 600;
+  margin-top: 3.5rem;
+  border-top: 2px solid #BC3A2B;
+  padding-top: 1.1rem;
+}
+.marca-sub {color: #9a9a9a; font-size: .92rem; margin-bottom: 1.8rem;}
+
+/* Etiquetas de estado */
+.chip {
+  display: inline-block;
+  font-size: .72rem;
+  padding: .14rem .55rem;
+  border-radius: 999px;
+  font-weight: 600;
+  letter-spacing: .02em;
+}
+.chip-ok   {background: rgba(60,160,90,.18);  color: #7ddba1;}
+.chip-warn {background: rgba(230,160,30,.18); color: #ecc06a;}
+</style>
+"""
+st.markdown(ESTILO, unsafe_allow_html=True)
+
+
+if not auth.usuario_actual():
+    # Sin sesión: solo la pantalla de acceso, sin menú lateral.
+    st.markdown(
+        "<style>[data-testid='stSidebar']{display:none;}</style>",
+        unsafe_allow_html=True,
     )
-    with st.expander("Detalle técnico"):
-        st.code(str(e))
-    st.stop()
-
-if not cursos:
-    st.info(
-        "Todavía no hay cursos. Ve a **Cursos** (menú de la izquierda) para dar "
-        "de alta el primero subiendo su informe de días lectivos (INF_30)."
-    )
+    st.navigation(
+        [st.Page(auth.pagina_login, title="Entrar")], position="hidden"
+    ).run()
 else:
-    st.subheader(f"{len(cursos)} curso(s) dado(s) de alta")
-    for c in cursos:
-        with st.container(border=True):
-            st.markdown(f"**{c['codigo']}** — {c.get('nombre') or 'sin nombre'}")
-            st.caption(f"Alta: {c['creado_en'][:10]}")
+    navegacion = st.navigation(
+        [
+            st.Page("vistas/cursos.py", title="Cursos", icon=":material/school:", default=True),
+            st.Page("vistas/validacion.py", title="Validación", icon=":material/fact_check:"),
+            st.Page("vistas/seguimiento.py", title="Seguimiento", icon=":material/monitoring:"),
+        ]
+    )
+    auth.barra_usuario()
+    navegacion.run()

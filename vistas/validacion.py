@@ -4,16 +4,12 @@ from __future__ import annotations
 
 import streamlit as st
 
-from core import auth, db, progreso, validacion
+from core import db, progreso, ui, validacion
 
-st.set_page_config(page_title="Validación", page_icon="▪", layout="wide")
-
-auth.exigir_login()
-
-st.title("Validación de pruebas")
-st.caption(
+ui.cabecera(
+    "Validación de pruebas",
     "Confirma qué actividad del informe de progreso corresponde a cada examen "
-    "del calendario, y cuáles no deben contar como prueba calificable."
+    "del calendario, y cuáles no deben contar como prueba calificable.",
 )
 
 # ---------------------------------------------------------------------------
@@ -31,9 +27,7 @@ if not cursos:
     st.info("Primero da de alta un curso en la página **Cursos**.")
     st.stop()
 
-etiquetas = {f"{c['codigo']} — {c.get('nombre') or 'sin nombre'}": c for c in cursos}
-elegido = st.selectbox("Curso", list(etiquetas))
-curso = etiquetas[elegido]
+curso = ui.selector_curso(cursos, "curso_validacion")
 
 examenes = db.examenes_de_curso(curso["id"])
 del_calendario = [e for e in examenes if e.get("pub_date")]

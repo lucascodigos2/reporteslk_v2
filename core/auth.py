@@ -59,43 +59,42 @@ def _intentar_login(email: str, password: str) -> str | None:
     return None
 
 
-def _pantalla_login() -> None:
-    st.title("Seguimiento de cursos")
-    st.caption("Introduce tus credenciales para acceder.")
+def pagina_login() -> None:
+    """Pantalla de acceso. Se muestra sin menú lateral."""
+    izq, centro, der = st.columns([1, 1.6, 1])
+    with centro:
+        st.markdown('<div class="marca">Seguimiento de cursos</div>', unsafe_allow_html=True)
+        st.markdown(
+            '<p class="marca-sub">Acceso restringido al profesorado.</p>',
+            unsafe_allow_html=True,
+        )
 
-    with st.form("login"):
-        email = st.text_input("Email")
-        password = st.text_input("Contraseña", type="password")
-        enviar = st.form_submit_button("Entrar", type="primary")
+        with st.form("login"):
+            email = st.text_input("Email", placeholder="nombre@centro.es")
+            password = st.text_input("Contraseña", type="password", placeholder="••••••••")
+            enviar = st.form_submit_button("Entrar", type="primary", use_container_width=True)
 
-    if enviar:
-        if not email or not password:
-            st.error("Rellena email y contraseña.")
-        else:
-            error = _intentar_login(email, password)
-            if error:
-                st.error(error)
+        if enviar:
+            if not email or not password:
+                st.error("Rellena email y contraseña.")
             else:
-                st.rerun()
+                error = _intentar_login(email, password)
+                if error:
+                    st.error(error)
+                else:
+                    st.rerun()
 
-    st.caption(
-        "¿No tienes acceso? Las cuentas las crea el administrador desde Supabase."
-    )
+        st.caption("Las cuentas las crea el administrador desde Supabase.")
 
 
-def _barra_usuario() -> None:
+def barra_usuario() -> None:
+    """Pie del menú lateral con la sesión activa."""
     usuario = usuario_actual()
+    if not usuario:
+        return
     with st.sidebar:
-        st.caption(f"Sesión: **{usuario['email']}**")
-        if st.button("Cerrar sesión"):
+        st.divider()
+        st.caption(usuario["email"])
+        if st.button("Cerrar sesión", use_container_width=True):
             cerrar_sesion()
             st.rerun()
-
-
-def exigir_login() -> None:
-    """Bloquea la página si no hay sesión iniciada. Llamar al principio de cada página."""
-    if usuario_actual():
-        _barra_usuario()
-        return
-    _pantalla_login()
-    st.stop()

@@ -6,16 +6,12 @@ from datetime import date
 
 import streamlit as st
 
-from core import auth, db, informe, progreso
+from core import db, informe, progreso, ui
 
-st.set_page_config(page_title="Seguimiento", page_icon="▪", layout="wide")
-
-auth.exigir_login()
-
-st.title("Seguimiento")
-st.caption(
+ui.cabecera(
+    "Seguimiento",
     "Sube el informe de finalización de actividades para ver quién va al día, "
-    "a quién hay que avisar hoy y descargar el informe completo."
+    "a quién hay que avisar hoy y descargar el informe completo.",
 )
 
 # ---------------------------------------------------------------------------
@@ -33,8 +29,7 @@ if not cursos:
     st.info("Primero da de alta un curso en la página **Cursos**.")
     st.stop()
 
-etiquetas = {f"{c['codigo']} — {c.get('nombre') or 'sin nombre'}": c for c in cursos}
-curso = etiquetas[st.selectbox("Curso", list(etiquetas))]
+curso = ui.selector_curso(cursos, "curso_seguimiento")
 
 examenes = db.examenes_de_curso(curso["id"])
 if not db.curso_validado(curso["id"]):
