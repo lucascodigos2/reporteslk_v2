@@ -77,3 +77,41 @@ def guardar_examenes(curso_id: str, examenes: list[dict[str, Any]]) -> None:
     if examenes:
         rows = [{**e, "curso_id": curso_id} for e in examenes]
         client.table("examenes").insert(rows).execute()
+
+
+def actualizar_examen(examen_id: str, campos: dict[str, Any]) -> None:
+    get_client().table("examenes").update(campos).eq("id", examen_id).execute()
+
+
+def crear_examen(curso_id: str, campos: dict[str, Any]) -> dict[str, Any]:
+    res = get_client().table("examenes").insert({**campos, "curso_id": curso_id}).execute()
+    return res.data[0]
+
+
+def borrar_examenes_sin_calendario(curso_id: str) -> None:
+    """Borra las pruebas creadas en validación (las que no vienen del calendario).
+
+    Se identifican por no tener fecha de publicación. Permite re-validar un curso
+    sin duplicar filas ni tocar los exámenes reales del INF_30.
+    """
+    (
+        get_client()
+        .table("examenes")
+        .delete()
+        .eq("curso_id", curso_id)
+        .is_("pub_date", "null")
+        .execute()
+    )
+
+
+def curso_validado(curso_id: str) -> bool:
+    res = (
+        get_client()
+        .table("examenes")
+        .select("id")
+        .eq("curso_id", curso_id)
+        .eq("validado", True)
+        .limit(1)
+        .execute()
+    )
+    return bool(res.data)
