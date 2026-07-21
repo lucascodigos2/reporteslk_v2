@@ -1,0 +1,17 @@
+# Secrets de Streamlit — ¡NUNCA subir al repo!
+.streamlit/secrets.toml
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+env/
+
+# Salidas generadas / temporales
+salida/
+*.tmp
+
+# Sistema
+.DS_Store
+Thumbs.db
