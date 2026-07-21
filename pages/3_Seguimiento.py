@@ -6,9 +6,11 @@ from datetime import date
 
 import streamlit as st
 
-from core import db, informe, progreso
+from core import auth, db, informe, progreso
 
 st.set_page_config(page_title="Seguimiento", page_icon="▪", layout="wide")
+
+auth.exigir_login()
 
 st.title("Seguimiento")
 st.caption(

@@ -4,13 +4,15 @@ from __future__ import annotations
 
 import streamlit as st
 
-from core import db
+from core import auth, db
 
 st.set_page_config(
     page_title="Seguimiento de cursos",
     page_icon="▪",
     layout="wide",
 )
+
+auth.exigir_login()
 
 st.title("Seguimiento de cursos")
 st.caption(

@@ -4,9 +4,11 @@ from __future__ import annotations
 
 import streamlit as st
 
-from core import db, progreso, validacion
+from core import auth, db, progreso, validacion
 
 st.set_page_config(page_title="Validación", page_icon="▪", layout="wide")
+
+auth.exigir_login()
 
 st.title("Validación de pruebas")
 st.caption(

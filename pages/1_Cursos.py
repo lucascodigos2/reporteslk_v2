@@ -4,9 +4,11 @@ from __future__ import annotations
 
 import streamlit as st
 
-from core import calendario, db
+from core import auth, calendario, db
 
 st.set_page_config(page_title="Cursos", page_icon="▪", layout="wide")
+
+auth.exigir_login()
 
 st.title("Cursos")
 
