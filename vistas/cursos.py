@@ -6,7 +6,7 @@ import html
 
 import streamlit as st
 
-from core import calendario, db, moodle, ui
+from core import calendario, correo, db, moodle, ui
 
 ui.cabecera(
     "Cursos",
@@ -129,6 +129,8 @@ for c in cursos:
                 if validado
                 else ui.chip("Pendiente de validar", "warn")
             )
+            if not (c.get("destinatarios") or []):
+                estado += " " + ui.chip("Sin destinatarios", "warn")
             # El código viene de un Excel subido: escapar antes de inyectarlo como HTML.
             st.markdown(
                 f"**{html.escape(str(c['codigo']))}** &nbsp; {estado}",
@@ -189,6 +191,30 @@ for c in cursos:
                             )
                             st.session_state.pop(f"hits_{c['id']}", None)
                             st.rerun()
+
+            # Destinatarios del resumen diario de avisos
+            actuales = c.get("destinatarios") or []
+            with st.expander(
+                "Avisos por correo: "
+                + (f"{len(actuales)} destinatario(s)" if actuales else "sin destinatarios")
+            ):
+                texto = st.text_area(
+                    "Correos (uno por línea)",
+                    value="\n".join(actuales),
+                    key=f"dest_{c['id']}",
+                    height=90,
+                    help="Quién recibe el resumen diario de alumnos a avisar de "
+                         "este curso.",
+                )
+                if st.button("Guardar destinatarios", key=f"gd_{c['id']}"):
+                    validos, invalidos = correo.normalizar_destinatarios(texto)
+                    if invalidos:
+                        st.error(
+                            "No parecen correos válidos: " + ", ".join(invalidos)
+                        )
+                    else:
+                        db.actualizar_curso(c["id"], {"destinatarios": validos})
+                        st.rerun()
 
         with der:
             if st.button("Borrar", key=f"del_{c['id']}", use_container_width=True):

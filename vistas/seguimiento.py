@@ -6,7 +6,7 @@ from datetime import date
 
 import streamlit as st
 
-from core import db, informe, moodle, progreso, ui
+from core import correo, db, informe, moodle, progreso, ui
 
 ui.cabecera(
     "Seguimiento",
@@ -153,13 +153,31 @@ if resultado:
     else:
         st.success("Nadie tiene pruebas en plazo pendientes hoy.")
 
-    st.download_button(
+    d1, d2 = st.columns([1, 1])
+    d1.download_button(
         "Descargar informe completo (.xlsx)",
         data=resultado["excel"],
         file_name=f"seguimiento_{curso['codigo'].replace('/', '-')}_"
         f"{resultado['as_of'].strftime('%Y%m%d')}.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        use_container_width=True,
     )
+
+    destinatarios = curso.get("destinatarios") or []
+    if d2.button(
+        "Enviar resumen por correo",
+        use_container_width=True,
+        disabled=not destinatarios,
+        help="Configura los destinatarios en la página Cursos."
+        if not destinatarios
+        else "Envía a: " + ", ".join(destinatarios),
+    ):
+        try:
+            enviados = correo.enviar_resumen(curso, resultado)
+        except correo.ErrorCorreo as e:
+            st.error(str(e))
+        else:
+            st.success("Resumen enviado a " + ", ".join(enviados))
 
 # ---------------------------------------------------------------------------
 # Histórico

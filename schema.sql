@@ -23,6 +23,11 @@ create table if not exists public.cursos (
 -- Permite descargar el informe automáticamente en vez de subirlo a mano.
 alter table public.cursos add column if not exists moodle_course_id text;
 
+-- Destinatarios del resumen diario de avisos, por curso.
+-- Es configuración, no credencial: las claves de Mailjet siguen en los secrets.
+alter table public.cursos
+    add column if not exists destinatarios jsonb not null default '[]'::jsonb;
+
 -- Exámenes/pruebas de cada curso.
 -- Se detectan al crear el curso y se CONFIRMAN en la pantalla de validación:
 --   - actividad_progreso: nombre exacto de la columna del informe de progreso
