@@ -19,6 +19,10 @@ create table if not exists public.cursos (
     creado_en       timestamptz not null default now()
 );
 
+-- Id del curso en Moodle (el `course=` de la URL del informe de progreso).
+-- Permite descargar el informe automáticamente en vez de subirlo a mano.
+alter table public.cursos add column if not exists moodle_course_id text;
+
 -- Exámenes/pruebas de cada curso.
 -- Se detectan al crear el curso y se CONFIRMAN en la pantalla de validación:
 --   - actividad_progreso: nombre exacto de la columna del informe de progreso

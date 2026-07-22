@@ -6,7 +6,7 @@ from datetime import date
 
 import streamlit as st
 
-from core import db, informe, progreso, ui
+from core import db, informe, moodle, progreso, ui
 
 ui.cabecera(
     "Seguimiento",
@@ -39,9 +39,26 @@ if not db.curso_validado(curso["id"]):
     )
     st.stop()
 
+origen = st.radio(
+    "Origen del informe",
+    ["Descargar de Moodle", "Subir un fichero"],
+    horizontal=True,
+    label_visibility="collapsed",
+)
+
 col_a, col_b = st.columns([2, 1])
 with col_a:
-    archivo = st.file_uploader("Informe de progreso (.csv o .xlsx)", type=["csv", "xlsx"])
+    if origen == "Subir un fichero":
+        archivo = st.file_uploader("Informe de progreso (.csv o .xlsx)", type=["csv", "xlsx"])
+    else:
+        archivo = None
+        if curso.get("moodle_course_id"):
+            st.caption(f"Curso {curso['moodle_course_id']} en Moodle.")
+        else:
+            st.warning(
+                "Este curso no tiene id de Moodle. Añádelo en la página "
+                "**Cursos** para poder descargar el informe automáticamente."
+            )
 with col_b:
     fecha_ref = st.date_input("Fecha de referencia", value=date.today(), format="DD/MM/YYYY")
 
@@ -50,10 +67,26 @@ guardar = st.checkbox(
     help="Permite ver después la evolución del curso en el tiempo.",
 )
 
-if archivo is not None and st.button("Generar seguimiento", type="primary"):
+if origen == "Descargar de Moodle":
+    listo = bool(curso.get("moodle_course_id"))
+    etiqueta = "Descargar de Moodle y generar seguimiento"
+else:
+    listo = archivo is not None
+    etiqueta = "Generar seguimiento"
+
+if listo and st.button(etiqueta, type="primary"):
     try:
+        if origen == "Descargar de Moodle":
+            with st.spinner("Descargando el informe de Moodle…"):
+                nombre, contenido = moodle.descargar_informe(
+                    curso["moodle_course_id"], codigo_esperado=curso["codigo"]
+                )
+            archivo = moodle.FicheroDescargado(nombre, contenido)
+            st.caption(f"Descargado: {nombre}")
         actividades, alumnos = progreso.leer_progreso(archivo)
         resultado = informe.generar(curso, examenes, actividades, alumnos, fecha_ref)
+    except moodle.ErrorMoodle as e:
+        st.error(str(e))
     except Exception as e:  # noqa: BLE001
         st.error(f"No se ha podido generar el seguimiento. {e}")
         with st.expander("Detalle técnico"):

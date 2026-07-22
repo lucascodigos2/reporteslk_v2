@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import html
+
 import streamlit as st
 
-from core import calendario, db, ui
+from core import calendario, db, moodle, ui
 
 ui.cabecera(
     "Cursos",
@@ -70,12 +72,43 @@ with st.expander("Dar de alta un curso nuevo", expanded=not cursos):
                     info["codigo"], info["nombre"], info["fechas_lectivas"]
                 )
                 db.guardar_examenes(curso["id"], info["examenes"])
-                st.success("Curso guardado.")
+
+                # Vincular con Moodle por expediente. Que Moodle falle no debe
+                # impedir dar de alta el curso.
+                # El aviso se guarda porque el rerun de abajo limpiaría la pantalla.
+                try:
+                    encontrados = moodle.buscar_curso(info["codigo"])
+                except moodle.ErrorMoodle as e:
+                    aviso = ("warning", f"No se pudo consultar Moodle: {e}")
+                else:
+                    if len(encontrados) == 1:
+                        db.actualizar_curso(
+                            curso["id"], {"moodle_course_id": encontrados[0]["id"]}
+                        )
+                        aviso = (
+                            "info",
+                            f"Vinculado con Moodle (curso {encontrados[0]['id']}): "
+                            f"{encontrados[0]['nombre']}",
+                        )
+                    else:
+                        aviso = (
+                            "warning",
+                            "No se ha podido identificar el curso en Moodle "
+                            f"({len(encontrados)} coincidencias). Añade el id a "
+                            "mano para poder descargar el informe.",
+                        )
+
+                st.session_state["aviso_alta"] = aviso
                 st.rerun()
 
 # ---------------------------------------------------------------------------
 # Listado
 # ---------------------------------------------------------------------------
+aviso = st.session_state.pop("aviso_alta", None)
+if aviso:
+    st.success("Curso guardado.")
+    getattr(st, aviso[0])(aviso[1])
+
 if not cursos:
     st.info("Todavía no hay cursos dados de alta.")
     st.stop()
@@ -96,7 +129,11 @@ for c in cursos:
                 if validado
                 else ui.chip("Pendiente de validar", "warn")
             )
-            st.markdown(f"**{c['codigo']}** &nbsp; {estado}", unsafe_allow_html=True)
+            # El código viene de un Excel subido: escapar antes de inyectarlo como HTML.
+            st.markdown(
+                f"**{html.escape(str(c['codigo']))}** &nbsp; {estado}",
+                unsafe_allow_html=True,
+            )
             st.caption(
                 f"{c.get('nombre') or 'sin nombre'}  ·  {len(examenes)} pruebas  ·  "
                 f"{n_subidas} subida(s)  ·  alta {c['creado_en'][:10]}"
@@ -106,6 +143,52 @@ for c in cursos:
                     "Ve a **Validación** para asociar las actividades del informe "
                     "de progreso a cada examen."
                 )
+
+            # Id de Moodle: habilita la descarga automática del informe
+            with st.expander(
+                "Moodle: " + (f"curso {c['moodle_course_id']}" if c.get("moodle_course_id")
+                              else "sin vincular")
+            ):
+                nuevo = st.text_input(
+                    "Id del curso en Moodle",
+                    value=c.get("moodle_course_id") or "",
+                    key=f"moodle_{c['id']}",
+                    help="El número que aparece como `course=` en la URL del "
+                         "informe de progreso de este curso en Moodle.",
+                )
+                b1, b2 = st.columns(2)
+                if b1.button("Guardar id", key=f"gm_{c['id']}"):
+                    db.actualizar_curso(
+                        c["id"], {"moodle_course_id": nuevo.strip() or None}
+                    )
+                    st.rerun()
+
+                if b2.button("Buscar en Moodle", key=f"bm_{c['id']}"):
+                    try:
+                        st.session_state[f"hits_{c['id']}"] = moodle.buscar_curso(
+                            c["codigo"]
+                        )
+                    except moodle.ErrorMoodle as e:
+                        st.error(str(e))
+
+                hits = st.session_state.get(f"hits_{c['id']}")
+                if hits is not None:
+                    if not hits:
+                        st.warning(
+                            f"Ningún curso de Moodle empieza por «{c['codigo']}». "
+                            "Introduce el id a mano."
+                        )
+                    else:
+                        etiquetas = {f"{h['id']} — {h['nombre']}": h["id"] for h in hits}
+                        elegido = st.selectbox(
+                            "Coincidencias", list(etiquetas), key=f"sel_{c['id']}"
+                        )
+                        if st.button("Vincular", key=f"vc_{c['id']}", type="primary"):
+                            db.actualizar_curso(
+                                c["id"], {"moodle_course_id": etiquetas[elegido]}
+                            )
+                            st.session_state.pop(f"hits_{c['id']}", None)
+                            st.rerun()
 
         with der:
             if st.button("Borrar", key=f"del_{c['id']}", use_container_width=True):

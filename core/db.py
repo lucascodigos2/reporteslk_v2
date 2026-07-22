@@ -49,6 +49,10 @@ def crear_curso(codigo: str, nombre: str, fechas_lectivas: list[date]) -> dict[s
     return res.data[0]
 
 
+def actualizar_curso(curso_id: str, campos: dict[str, Any]) -> None:
+    get_client().table("cursos").update(campos).eq("id", curso_id).execute()
+
+
 def borrar_curso(curso_id: str) -> None:
     # examenes se borra en cascada (ON DELETE CASCADE)
     get_client().table("cursos").delete().eq("id", curso_id).execute()
